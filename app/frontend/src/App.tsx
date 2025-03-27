@@ -3,6 +3,8 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import RegistrationForm from './components/RegistrationForm';
 import ProfileScreen from './components/ProfileScreen';
 import MainScreen from './screens/MainScreen';
+import PostTask from './screens/PostTask';
+import LoginScreen from './screens/LoginScreen';
 
 function App() {
   return (
@@ -10,14 +12,9 @@ function App() {
       <div className="min-h-screen bg-gray-100">
         <Routes>
           <Route path="/" element={<MainScreen />} /> {/* Главный экран */}
-          <Route path="/login" element={
-            <div className="flex items-center justify-center p-4">
-              <div className="max-w-md w-full">
-                <RegistrationForm />
-              </div>
-            </div>
-          } />
+          <Route path="/login" element={<LoginScreen />} />
           <Route path="/profile" element={<ProfileScreen />} />
+          <Route path="/post-task" element={<PostTask />}/>
         </Routes>
       </div>
     </Router>

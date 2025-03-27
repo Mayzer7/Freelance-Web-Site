@@ -7,7 +7,7 @@ import {
   ArrowRight,
   Search,
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 
 function MainScreen() {
   const navigate = useNavigate();
@@ -19,23 +19,25 @@ function MainScreen() {
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <Code2 className="w-8 h-8 text-blue-400" />
-            <span className="text-xl font-bold">FreelanceHub</span>
+            <Link to="/" className="text-xl font-bold hover:text-blue-400 transition-colors">
+              FreelanceHub
+            </Link>
           </div>
           <div className="hidden md:flex items-center space-x-8">
             <a href="#" className="hover:text-blue-400 transition-colors">
-              Find Work
+              Найти работу
             </a>
+            <Link to="/post-task" className="hover:text-blue-400 transition-colors">
+              Разместить задание
+            </Link>
             <a href="#" className="hover:text-blue-400 transition-colors">
-              Find Talent
-            </a>
-            <a href="#" className="hover:text-blue-400 transition-colors">
-              Why Us
+              FAQ
             </a>
             <button
               className="bg-blue-500 hover:bg-blue-600 px-6 py-2 rounded-full transition-colors"
               onClick={() => navigate("/login")}
             >
-              Sign Up
+              Войти
             </button>
           </div>
         </div>
@@ -83,25 +85,24 @@ function MainScreen() {
           <div className="bg-slate-800/50 p-8 rounded-2xl hover:bg-gradient-to-r from-blue-500/10 to-purple-500/10 transition-all duration-300">
             <Briefcase className="w-12 h-12 text-blue-400 mb-6" />
             <h3 className="text-xl font-semibold mb-4">
-              Find Perfect Projects
+              Находите Идеальные Проекты
             </h3>
             <p className="text-gray-400">
-              Access a wide range of projects matching your skills and
-              expertise.
+            Получите доступ к широкому спектру проектов, соответствующих вашим навыкам и опыту.
             </p>
           </div>
           <div className="bg-slate-800/50 p-8 rounded-2xl hover:bg-gradient-to-r from-blue-500/10 to-purple-500/10 transition-all duration-300">
             <Users className="w-12 h-12 text-purple-400 mb-6" />
-            <h3 className="text-xl font-semibold mb-4">Top Talent Pool</h3>
+            <h3 className="text-xl font-semibold mb-4">Лучшие OG Работники</h3>
             <p className="text-gray-400">
-              Connect with skilled professionals from around the globe.
+              Общайтесь с квалифицированными профессионалами со всего мира.
             </p>
           </div>
           <div className="bg-slate-800/50 p-8 rounded-2xl hover:bg-gradient-to-r from-blue-500/10 to-purple-500/10 transition-all duration-300">
             <Star className="w-12 h-12 text-yellow-400 mb-6" />
-            <h3 className="text-xl font-semibold mb-4">Secure Payments</h3>
+            <h3 className="text-xl font-semibold mb-4">Безопасные платежи</h3>
             <p className="text-gray-400">
-              Guaranteed payments and professional work delivery system.
+              Гарантированные выплаты и профессиональная система выполнения работ.
             </p>
           </div>
         </div>
@@ -113,12 +114,12 @@ function MainScreen() {
           <div className="absolute inset-0 bg-slate-900/50"></div>
           <div className="relative z-10">
             <h2 className="text-3xl font-bold text-center mb-8">
-              Ready to Get Started?
+              Готовы приступить к работе?
             </h2>
             <div className="max-w-2xl mx-auto flex bg-white rounded-full overflow-hidden">
               <input
                 type="text"
-                placeholder="Search for skills or projects..."
+                placeholder="Ищите навыки или проекты..."
                 className="flex-1 px-6 py-4 text-gray-900 outline-none"
               />
               <button className="bg-gradient-to-r from-blue-500 to-purple-500 px-8 py-4 flex items-center">
