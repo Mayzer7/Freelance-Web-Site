@@ -1,6 +1,5 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import RegistrationForm from './components/RegistrationForm';
 import ProfileScreen from './components/ProfileScreen';
 import MainScreen from './screens/MainScreen';
 import PostTask from './screens/PostTask';

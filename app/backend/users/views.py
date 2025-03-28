@@ -1,56 +1,124 @@
-from django.contrib.auth import login, logout
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from .forms import UserRegistrationForm
-from .models import Profile
-from .serializers import ProfileSerializer
-from django.middleware.csrf import get_token
-from django.http import JsonResponse
+from rest_framework.permissions import AllowAny
+from django.contrib.auth import authenticate, login
+from django.contrib.auth.models import User
+from rest_framework.authtoken.models import Token
 
 @api_view(['POST'])
+@permission_classes([AllowAny])
 def register_user(request):
-    form = UserRegistrationForm(request.data)
-    if form.is_valid():
-        user = form.save()
-        Profile.objects.create(user=user)  # Create empty profile
-        login(request, user)
-        response = Response({
-            "message": "Registration successful",
-            "username": user.username,
-            "userId": user.id,
-            "csrfToken": get_token(request)
-        }, status=status.HTTP_201_CREATED)
-        return response
-    return Response(form.errors, status=status.HTTP_400_BAD_REQUEST)
+    username = request.data.get('username')
+    password = request.data.get('password')
+    email = request.data.get('email')
+    
+    if not username or not password or not email:
+        return Response({'error': 'Пожалуйста, заполните все поля'}, status=status.HTTP_400_BAD_REQUEST)
 
-@api_view(['GET', 'PUT'])
+    if User.objects.filter(username=username).exists():
+        return Response({'error': 'Имя пользователя уже занято'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    user = User.objects.create_user(username=username, password=password, email=email)
+    token = Token.objects.create(user=user)
+    
+    return Response({
+        'user': {
+            'username': user.username,
+            'email': user.email
+        },
+        'token': token.key,
+        'message': 'Пользователь успешно зарегистрирован!'
+    }, status=status.HTTP_201_CREATED)
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def login_user(request):
+    username = request.data.get('username')
+    password = request.data.get('password')
+    
+    if not username or not password:
+        return Response({'error': 'Пожалуйста, укажите имя пользователя и пароль'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    user = authenticate(username=username, password=password)
+    
+    if not user:
+        return Response({'error': 'Неверные учетные данные'}, status=status.HTTP_401_UNAUTHORIZED)
+    
+    login(request, user)
+    token = Token.objects.get(user=user)
+    
+    return Response({
+        'user': {
+            'username': user.username,
+            'email': user.email
+        },
+        'token': token.key,
+        'message': 'Успешный вход в систему!'
+    })
+
+
+from rest_framework import status
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated, AllowAny
+from django.contrib.auth import authenticate, login, logout
+from .serializers import UserSerializer, ProfileSerializer
+from django.views.decorators.csrf import ensure_csrf_cookie
+    
+@api_view(['POST'])
 @permission_classes([IsAuthenticated])
-def profile_detail(request):
-    try:
-        profile = Profile.objects.get(user=request.user)
-    except Profile.DoesNotExist:
-        return Response(status=status.HTTP_404_NOT_FOUND)
+def logout_view(request):
+    logout(request)
+    return Response({'message': 'Successfully logged out'})
 
+@api_view(['GET'])
+def check_auth(request):
+    if request.user.is_authenticated:
+        return Response({'authenticated': True})
+    return Response(
+        {'authenticated': False}, 
+        status=status.HTTP_401_UNAUTHORIZED
+    )
+
+@api_view(['GET', 'PUT', 'PATCH'])
+@permission_classes([IsAuthenticated])
+def profile(request):
     if request.method == 'GET':
-        serializer = ProfileSerializer(profile)
+        serializer = ProfileSerializer(request.user.profile)
         return Response(serializer.data)
+    
+    elif request.method in ['PUT', 'PATCH']:
+        # Обработка данных формы
+        data = request.data.copy()
+        
+        # Подготовка данных пользователя
+        user_data = {}
+        full_name = data.pop('fullName', '').split(maxsplit=1)
+        if len(full_name) > 0:
+            user_data['first_name'] = full_name[0]
+        if len(full_name) > 1:
+            user_data['last_name'] = full_name[1]
 
-    elif request.method == 'PUT':
-        serializer = ProfileSerializer(profile, data=request.data, partial=True)
+        # Обработка skills из JSON строки
+        if 'skills' in data and isinstance(data['skills'], str):
+            import json
+            try:
+                data['skills'] = json.loads(data['skills'])
+            except json.JSONDecodeError:
+                data['skills'] = []
+
+        serializer = ProfileSerializer(
+            request.user.profile,
+            data=data,
+            partial=request.method == 'PATCH',
+            context={'user_data': user_data}
+        )
+        
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def logout_user(request):
-    logout(request)  
-    response = Response({"message": "Logout successful"}, status=status.HTTP_200_OK)
-    response.delete_cookie('sessionid')  # Удаляем куки сессии
-    return response
-
-def get_csrf_token(request):
-    return JsonResponse({'csrfToken': get_token(request)})
+        return Response(
+            serializer.errors,
+            status=status.HTTP_400_BAD_REQUEST
+        )

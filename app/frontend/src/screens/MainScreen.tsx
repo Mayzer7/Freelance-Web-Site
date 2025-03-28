@@ -7,13 +7,58 @@ import {
   ArrowRight,
   Search,
   Menu,
-  X
+  X,
+  UserCircle
 } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 
 function MainScreen() {
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  // Проверяем аутентификацию при загрузке компонента
+  React.useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const response = await fetch('/login/', {
+          method: 'GET',
+          credentials: 'include'
+        });
+        if (response.ok) {
+          setIsAuthenticated(true);
+        }
+      } catch (error) {
+        console.error('Auth check failed:', error);
+        setIsAuthenticated(false);
+      }
+    };
+
+    checkAuth();
+  }, []);
+
+  const AuthButton = () => {
+    if (isAuthenticated) {
+      return (
+        <button
+          className="bg-blue-500 hover:bg-blue-600 px-6 py-2 rounded-full transition-colors flex items-center space-x-2"
+          onClick={() => navigate("/profile")}
+        >
+          <UserCircle className="w-5 h-5" />
+          <span>Профиль</span>
+        </button>
+      );
+    }
+
+    return (
+      <button
+        className="bg-blue-500 hover:bg-blue-600 px-6 py-2 rounded-full transition-colors"
+        onClick={() => navigate("/login")}
+      >
+        Войти
+      </button>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-white">
@@ -46,12 +91,7 @@ function MainScreen() {
             <a href="#" className="hover:text-blue-400 transition-colors">
               FAQ
             </a>
-            <button
-              className="bg-blue-500 hover:bg-blue-600 px-6 py-2 rounded-full transition-colors"
-              onClick={() => navigate("/login")}
-            >
-              Войти
-            </button>
+            <AuthButton />
           </div>
         </div>
 
@@ -67,12 +107,7 @@ function MainScreen() {
             <a href="#" className="hover:text-blue-400 transition-colors">
               FAQ
             </a>
-            <button
-              className="bg-blue-500 hover:bg-blue-600 px-6 py-2 rounded-full transition-colors w-full"
-              onClick={() => navigate("/login")}
-            >
-              Войти
-            </button>
+            <AuthButton />
           </div>
         </div>
       </nav>

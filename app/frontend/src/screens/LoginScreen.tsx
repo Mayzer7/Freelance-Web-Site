@@ -1,30 +1,49 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Code2, User, Lock, ArrowRight } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Code2, User, Lock, ArrowRight, Mail } from 'lucide-react';
+import axios from 'axios';
+import toast, { Toaster } from 'react-hot-toast';
 
-function LoginScren() {
+
+const API_URL = 'http://localhost:8000/api/users';
+
+function LoginScreen() {
+  const navigate = useNavigate();
   const [isLogin, setIsLogin] = useState(true);
   const [formData, setFormData] = useState({
     username: '',
     password: '',
-    email: ''
+    email: '',
+    password2: ''
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Handle login/register logic here
-    console.log('Form submitted:', formData);
+    try {
+      const endpoint = isLogin ? '/login' : '/register';
+      const response = await axios.post(`${API_URL}${endpoint}/`, formData, { withCredentials: true });
+      
+      toast.success(response.data.message);
+      
+      // Сохранение токена в localStorage для дальнейших запросов
+      localStorage.setItem('token', response.data.token);
+      
+      // Перенаправление на главную страницу
+      navigate('/');
+    } catch (error) {
+      const message = 'Произошла ошибка. Попробуйте позже.';
+      toast.error(message);
+    }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
+  const handleInputChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-white flex flex-col">
+      <Toaster position="top-right" />
+      
       {/* Navigation */}
       <nav className="container mx-auto px-6 py-4">
         <Link to="/" className="flex items-center space-x-2 w-fit">
@@ -61,24 +80,39 @@ function LoginScren() {
                       name="username"
                       value={formData.username}
                       onChange={handleInputChange}
-                      placeholder="Username"
+                      placeholder="Имя пользователя"
                       className="w-full bg-slate-900/50 border border-slate-700 rounded-lg py-3 pl-12 pr-4 text-white placeholder-gray-400 focus:outline-none focus:border-blue-400 transition-colors"
                       required
                     />
                   </div>
 
                   {!isLogin && (
-                    <div className="relative group">
-                      <input
-                        type="email"
-                        name="email"
-                        value={formData.email}
-                        onChange={handleInputChange}
-                        placeholder="Email"
-                        className="w-full bg-slate-900/50 border border-slate-700 rounded-lg py-3 pl-12 pr-4 text-white placeholder-gray-400 focus:outline-none focus:border-blue-400 transition-colors"
-                        required
-                      />
-                    </div>
+                    <>
+                      <div className="relative group">
+                        <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-blue-400 transition-colors" />
+                        <input
+                          type="email"
+                          name="email"
+                          value={formData.email}
+                          onChange={handleInputChange}
+                          placeholder="Email"
+                          className="w-full bg-slate-900/50 border border-slate-700 rounded-lg py-3 pl-12 pr-4 text-white placeholder-gray-400 focus:outline-none focus:border-blue-400 transition-colors"
+                          required
+                        />
+                      </div>
+                      <div className="relative group">
+                        <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-blue-400 transition-colors" />
+                        <input
+                          type="password"
+                          name="password2"
+                          value={formData.password2}
+                          onChange={handleInputChange}
+                          placeholder="Подтвердите пароль"
+                          className="w-full bg-slate-900/50 border border-slate-700 rounded-lg py-3 pl-12 pr-4 text-white placeholder-gray-400 focus:outline-none focus:border-blue-400 transition-colors"
+                          required
+                        />
+                      </div>
+                    </>
                   )}
 
                   <div className="relative group">
@@ -88,7 +122,7 @@ function LoginScren() {
                       name="password"
                       value={formData.password}
                       onChange={handleInputChange}
-                      placeholder="Password"
+                      placeholder="Пароль"
                       className="w-full bg-slate-900/50 border border-slate-700 rounded-lg py-3 pl-12 pr-4 text-white placeholder-gray-400 focus:outline-none focus:border-blue-400 transition-colors"
                       required
                     />
@@ -123,4 +157,4 @@ function LoginScren() {
   );
 }
 
-export default LoginScren;
+export default LoginScreen;

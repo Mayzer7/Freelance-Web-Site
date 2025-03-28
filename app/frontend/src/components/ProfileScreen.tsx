@@ -1,281 +1,250 @@
-import React, { useEffect, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
-import { Briefcase, MapPin, Link as LinkIcon, Github, Linkedin, Twitter, Globe } from 'lucide-react';
-import LogoutButton from './LogoutButton';
+import { Camera, LogOut, Save, User } from 'lucide-react';
 
-interface ProfileData {
-  bio: string;
-  avatar: string;
-  title: string;
-  location: string;
-  github: string;
-  linkedin: string;
-  twitter: string;
-  website: string;
+interface UserProfile {
+  avatar?: string;
+  fullName: string;
+  specialization: string;
+  hourlyRate: string;
+  description: string;
   skills: string[];
-  experience: string;
-  education: string;
-  portfolio_items: Array<{
-    title: string;
-    description: string;
-    url: string;
-  }>;
-  hourly_rate: number;
-  available_for_hire: boolean;
 }
 
-const ProfileScreen = () => {
-  const [isEditing, setIsEditing] = useState(false);
-  const { register, handleSubmit, setValue, formState: { errors } } = useForm<ProfileData>();
-  const [profile, setProfile] = useState<ProfileData | null>(null);
+export default function UserProfile() {
+  const navigate = useNavigate();
+  const [profile, setProfile] = useState<UserProfile>({
+    fullName: '',
+    specialization: '',
+    hourlyRate: '',
+    description: '',
+    skills: []
+  });
+  const [newSkill, setNewSkill] = useState('');
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string>('');
 
   useEffect(() => {
-    const fetchProfile = async () => {
-      try {
-        const response = await axios.get('/api/users/profile/', {
-          withCredentials: true
-        });
-        setProfile(response.data);
-        // Set form values
-        Object.entries(response.data).forEach(([key, value]) => {
-          setValue(key as keyof ProfileData, value as ProfileData[keyof ProfileData]);
-        });
-      } catch (error) {
-        console.error('Error fetching profile:', error);
-      }
-    };
-    fetchProfile();
-  }, [setValue]);
+    fetchUserProfile();
+  }, []);
 
-  const onSubmit = async (data: ProfileData) => {
+  const fetchUserProfile = async () => {
     try {
-      const response = await axios.put('/api/users/profile/', data, {
-        withCredentials: true
+      const response = await fetch('/api/users/profile/', {
+        credentials: 'include'
       });
-      setProfile(response.data);
-      setIsEditing(false);
+      if (response.ok) {
+        const data = await response.json();
+        setProfile(data);
+        if (data.avatar) {
+          setAvatarPreview(data.avatar);
+        }
+      }
     } catch (error) {
-      console.error('Error updating profile:', error);
+      console.error('Failed to fetch profile:', error);
     }
   };
 
-  if (!profile && !isEditing) {
-    return (
-      <div className="flex justify-center items-center h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
-      </div>
-    );
-  }
+  const handleLogout = async () => {
+    try {
+      const response = await fetch('/api/users/logout/', {
+        method: 'POST',
+        credentials: 'include',
+      });
+      
+      if (response.ok) {
+        navigate('/login');
+      }
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
+  };
+
+  const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setAvatarFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setAvatarPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleAddSkill = () => {
+    if (newSkill.trim() && !profile.skills.includes(newSkill.trim())) {
+      setProfile(prev => ({
+        ...prev,
+        skills: [...prev.skills, newSkill.trim()]
+      }));
+      setNewSkill('');
+    }
+  };
+
+  const handleRemoveSkill = (skillToRemove: string) => {
+    setProfile(prev => ({
+      ...prev,
+      skills: prev.skills.filter(skill => skill !== skillToRemove)
+    }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    const formData = new FormData();
+    Object.entries(profile).forEach(([key, value]) => {
+      if (key === 'skills') {
+        formData.append(key, JSON.stringify(value));
+      } else {
+        formData.append(key, value);
+      }
+    });
+    
+    if (avatarFile) {
+      formData.append('avatar', avatarFile);
+    }
+
+    try {
+      const response = await fetch('/api/profile/', {
+        method: 'POST',
+        credentials: 'include',
+        body: formData
+      });
+
+      if (response.ok) {
+        // Обновляем профиль после успешного сохранения
+        fetchUserProfile();
+      }
+    } catch (error) {
+      console.error('Failed to update profile:', error);
+    }
+  };
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
-      <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-        {!isEditing ? (
-          // View Mode
-          <div className="p-8">
-            <div className="flex justify-between items-start mb-8">
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900">{profile?.title || 'Add Your Title'}</h1>
-                <div className="flex items-center mt-2 text-gray-600">
-                  <MapPin className="h-5 w-5 mr-2" />
-                  <span>{profile?.location || 'Add Location'}</span>
-                </div>
-              </div>
-              <div className='flex flex-col gap-2'>
-                <button
-                  onClick={() => setIsEditing(true)}
-                  className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
-                >
-                  Edit Profile
-                </button>
-
-                <LogoutButton /> {/* Используем компонент вместо обычной кнопки */}
-              </div>
-            </div>
-
-            <div className="prose max-w-none mb-8">
-              <h2 className="text-xl font-semibold mb-4">About Me</h2>
-              <p className="text-gray-700">{profile?.bio || 'Add your bio'}</p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-              <div>
-                <h2 className="text-xl font-semibold mb-4">Skills</h2>
-                <div className="flex flex-wrap gap-2">
-                  {profile?.skills?.map((skill, index) => (
-                    <span
-                      key={index}
-                      className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm"
-                    >
-                      {skill}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <h2 className="text-xl font-semibold mb-4">Availability</h2>
-                <div className="flex items-center">
-                  <Briefcase className="h-5 w-5 mr-2 text-gray-600" />
-                  <span className="text-gray-700">
-                    {profile?.available_for_hire ? 'Available for hire' : 'Not available'}
-                    {profile?.hourly_rate && ` - $${profile.hourly_rate}/hr`}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div className="border-t pt-8">
-              <h2 className="text-xl font-semibold mb-4">Social Links</h2>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {profile?.github && (
-                  <a href={profile.github} className="flex items-center text-gray-600 hover:text-gray-900">
-                    <Github className="h-5 w-5 mr-2" />
-                    GitHub
-                  </a>
-                )}
-                {profile?.linkedin && (
-                  <a href={profile.linkedin} className="flex items-center text-gray-600 hover:text-gray-900">
-                    <Linkedin className="h-5 w-5 mr-2" />
-                    LinkedIn
-                  </a>
-                )}
-                {profile?.twitter && (
-                  <a href={profile.twitter} className="flex items-center text-gray-600 hover:text-gray-900">
-                    <Twitter className="h-5 w-5 mr-2" />
-                    Twitter
-                  </a>
-                )}
-                {profile?.website && (
-                  <a href={profile.website} className="flex items-center text-gray-600 hover:text-gray-900">
-                    <Globe className="h-5 w-5 mr-2" />
-                    Website
-                  </a>
-                )}
-              </div>
-            </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-white py-12 px-4">
+      <div className="max-w-4xl mx-auto">
+        <div className="bg-slate-800/50 rounded-2xl p-8">
+          <div className="flex justify-between items-center mb-8">
+            <h1 className="text-3xl font-bold">Профиль фрилансера</h1>
+            <button
+              onClick={handleLogout}
+              className="flex items-center space-x-2 bg-red-500 hover:bg-red-600 px-4 py-2 rounded-lg transition-colors"
+            >
+              <LogOut className="w-5 h-5" />
+              <span>Выйти</span>
+            </button>
           </div>
-        ) : (
-          // Edit Mode
-          <form onSubmit={handleSubmit(onSubmit)} className="p-8 space-y-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Professional Title</label>
-              <input
-                type="text"
-                {...register('title')}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-              />
-            </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Location</label>
-              <input
-                type="text"
-                {...register('location')}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Bio</label>
-              <textarea
-                {...register('bio')}
-                rows={4}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Skills (comma-separated)</label>
-              <input
-                type="text"
-                {...register('skills')}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Hourly Rate ($)</label>
-                <input
-                  type="number"
-                  {...register('hourly_rate')}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                />
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Avatar Section */}
+            <div className="flex items-center space-x-6">
+              <div className="relative">
+                <div className="w-32 h-32 rounded-full overflow-hidden bg-slate-700">
+                  {avatarPreview ? (
+                    <img
+                      src={avatarPreview}
+                      alt="Profile"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <User className="w-full h-full p-6 text-slate-400" />
+                  )}
+                </div>
+                <label className="absolute bottom-0 right-0 bg-blue-500 p-2 rounded-full cursor-pointer hover:bg-blue-600 transition-colors">
+                  <Camera className="w-5 h-5" />
+                  <input
+                    type="file"
+                    className="hidden"
+                    accept="image/*"
+                    onChange={handleAvatarChange}
+                  />
+                </label>
               </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Available for Hire</label>
+              <div className="flex-1">
                 <input
-                  type="checkbox"
-                  {...register('available_for_hire')}
-                  className="mt-2 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                  type="text"
+                  placeholder="Ваше полное имя"
+                  value={profile.fullName}
+                  onChange={e => setProfile({...profile, fullName: e.target.value})}
+                  className="w-full bg-slate-700 rounded-lg px-4 py-2 mb-3"
+                />
+                <input
+                  type="text"
+                  placeholder="Специализация"
+                  value={profile.specialization}
+                  onChange={e => setProfile({...profile, specialization: e.target.value})}
+                  className="w-full bg-slate-700 rounded-lg px-4 py-2"
                 />
               </div>
             </div>
 
+            {/* Rate and Description */}
             <div className="space-y-4">
-              <h3 className="text-lg font-medium text-gray-900">Social Links</h3>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700">GitHub</label>
-                <input
-                  type="url"
-                  {...register('github')}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                />
-              </div>
+              <input
+                type="text"
+                placeholder="Почасовая ставка (₽)"
+                value={profile.hourlyRate}
+                onChange={e => setProfile({...profile, hourlyRate: e.target.value})}
+                className="w-full bg-slate-700 rounded-lg px-4 py-2"
+              />
+              <textarea
+                placeholder="Расскажите о себе и своем опыте..."
+                value={profile.description}
+                onChange={e => setProfile({...profile, description: e.target.value})}
+                className="w-full bg-slate-700 rounded-lg px-4 py-2 h-32 resize-none"
+              />
+            </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700">LinkedIn</label>
+            {/* Skills Section */}
+            <div className="space-y-4">
+              <div className="flex space-x-2">
                 <input
-                  type="url"
-                  {...register('linkedin')}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                  type="text"
+                  placeholder="Добавить навык"
+                  value={newSkill}
+                  onChange={e => setNewSkill(e.target.value)}
+                  className="flex-1 bg-slate-700 rounded-lg px-4 py-2"
+                  onKeyPress={e => e.key === 'Enter' && handleAddSkill()}
                 />
+                <button
+                  type="button"
+                  onClick={handleAddSkill}
+                  className="bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-lg transition-colors"
+                >
+                  Добавить
+                </button>
               </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Twitter</label>
-                <input
-                  type="url"
-                  {...register('twitter')}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Personal Website</label>
-                <input
-                  type="url"
-                  {...register('website')}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                />
+              <div className="flex flex-wrap gap-2">
+                {profile.skills.map(skill => (
+                  <span
+                    key={skill}
+                    className="bg-blue-500/30 text-blue-300 px-3 py-1 rounded-full flex items-center"
+                  >
+                    {skill}
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveSkill(skill)}
+                      className="ml-2 text-blue-300 hover:text-blue-100"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
               </div>
             </div>
 
-            <div className="flex justify-end space-x-4 pt-6">
-              <button
-                type="button"
-                onClick={() => setIsEditing(false)}
-                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
-              >
-                Save Changes
-              </button>
-            </div>
+            {/* Submit Button */}
+            <button
+              type="submit"
+              className="w-full bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 px-6 py-3 rounded-lg transition-colors flex items-center justify-center space-x-2"
+            >
+              <Save className="w-5 h-5" />
+              <span>Сохранить изменения</span>
+            </button>
           </form>
-        )}
+        </div>
       </div>
     </div>
   );
-};
-
-export default ProfileScreen;
+}
