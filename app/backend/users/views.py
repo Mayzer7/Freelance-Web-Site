@@ -1,124 +1,65 @@
-from rest_framework import status
-from rest_framework.decorators import api_view, permission_classes
+from django.contrib.auth.models import AbstractUser
+from django.contrib.auth import authenticate
+from django.db import models
+from rest_framework import serializers, views, status
 from rest_framework.response import Response
-from rest_framework.permissions import AllowAny
-from django.contrib.auth import authenticate, login
-from django.contrib.auth.models import User
-from rest_framework.authtoken.models import Token
-
-@api_view(['POST'])
-@permission_classes([AllowAny])
-def register_user(request):
-    username = request.data.get('username')
-    password = request.data.get('password')
-    email = request.data.get('email')
-    
-    if not username or not password or not email:
-        return Response({'error': 'Пожалуйста, заполните все поля'}, status=status.HTTP_400_BAD_REQUEST)
-
-    if User.objects.filter(username=username).exists():
-        return Response({'error': 'Имя пользователя уже занято'}, status=status.HTTP_400_BAD_REQUEST)
-    
-    user = User.objects.create_user(username=username, password=password, email=email)
-    token = Token.objects.create(user=user)
-    
-    return Response({
-        'user': {
-            'username': user.username,
-            'email': user.email
-        },
-        'token': token.key,
-        'message': 'Пользователь успешно зарегистрирован!'
-    }, status=status.HTTP_201_CREATED)
-
-@api_view(['POST'])
-@permission_classes([AllowAny])
-def login_user(request):
-    username = request.data.get('username')
-    password = request.data.get('password')
-    
-    if not username or not password:
-        return Response({'error': 'Пожалуйста, укажите имя пользователя и пароль'}, status=status.HTTP_400_BAD_REQUEST)
-    
-    user = authenticate(username=username, password=password)
-    
-    if not user:
-        return Response({'error': 'Неверные учетные данные'}, status=status.HTTP_401_UNAUTHORIZED)
-    
-    login(request, user)
-    token = Token.objects.get(user=user)
-    
-    return Response({
-        'user': {
-            'username': user.username,
-            'email': user.email
-        },
-        'token': token.key,
-        'message': 'Успешный вход в систему!'
-    })
-
-
-from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated, AllowAny
-from django.contrib.auth import authenticate, login, logout
-from .serializers import UserSerializer, ProfileSerializer
-from django.views.decorators.csrf import ensure_csrf_cookie
-    
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def logout_view(request):
-    logout(request)
-    return Response({'message': 'Successfully logged out'})
+from rest_framework.permissions import IsAuthenticated
+from rest_framework_simplejwt.tokens import RefreshToken
+from django.contrib.auth.hashers import make_password
+
+from .serializers import RegisterSerializer
+
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
+
+
 
 @api_view(['GET'])
-def check_auth(request):
-    if request.user.is_authenticated:
-        return Response({'authenticated': True})
-    return Response(
-        {'authenticated': False}, 
-        status=status.HTTP_401_UNAUTHORIZED
-    )
+@permission_classes([IsAuthenticated])  # Требуем авторизацию по JWT
+def get_user_info(request):
+    user = request.user
+    return Response({
+        "username": user.username,
+        "email": user.email,
+        "balance": user.balance
+    }, status=status.HTTP_200_OK)
 
-@api_view(['GET', 'PUT', 'PATCH'])
-@permission_classes([IsAuthenticated])
-def profile(request):
-    if request.method == 'GET':
-        serializer = ProfileSerializer(request.user.profile)
-        return Response(serializer.data)
+@api_view(['POST'])
+def register_user(request):
+    serializer = RegisterSerializer(data=request.data)
+    if serializer.is_valid():
+        user = serializer.save()
+        refresh = RefreshToken.for_user(user)
+        return Response({
+            "message": "Registration successful!",
+            "refresh": str(refresh),
+            "access": str(refresh.access_token)
+        }, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(["POST"])
+def login_user(request):
+    username = request.data.get("username")
+    password = request.data.get("password")
+
+    user = authenticate(username=username, password=password)
+    if user is not None:
+        refresh = RefreshToken.for_user(user)
+        return Response({
+            "message": "Вы успешно вошли!",
+            "refresh": str(refresh),
+            "access": str(refresh.access_token)
+        }, status=status.HTTP_200_OK)
+    else:
+        return Response({"error": "Неверное имя пользователя или пароль"}, status=status.HTTP_400_BAD_REQUEST)
     
-    elif request.method in ['PUT', 'PATCH']:
-        # Обработка данных формы
-        data = request.data.copy()
-        
-        # Подготовка данных пользователя
-        user_data = {}
-        full_name = data.pop('fullName', '').split(maxsplit=1)
-        if len(full_name) > 0:
-            user_data['first_name'] = full_name[0]
-        if len(full_name) > 1:
-            user_data['last_name'] = full_name[1]
 
-        # Обработка skills из JSON строки
-        if 'skills' in data and isinstance(data['skills'], str):
-            import json
-            try:
-                data['skills'] = json.loads(data['skills'])
-            except json.JSONDecodeError:
-                data['skills'] = []
-
-        serializer = ProfileSerializer(
-            request.user.profile,
-            data=data,
-            partial=request.method == 'PATCH',
-            context={'user_data': user_data}
-        )
-        
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(
-            serializer.errors,
-            status=status.HTTP_400_BAD_REQUEST
-        )
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def logout_user(request):
+    response = Response({"message": "Вы вышли из аккаунта!"}, status=status.HTTP_200_OK)
+    response.delete_cookie("access")  # Удаляем access-токен (если используем cookies)
+    response.delete_cookie("refresh") # Удаляем refresh-токен (если используем cookies)
+    return response

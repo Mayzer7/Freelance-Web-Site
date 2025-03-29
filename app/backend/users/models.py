@@ -10,16 +10,8 @@ from django.db.models.signals import post_save
 
 class User(AbstractUser):
     email = models.EmailField(unique=True)
-    
-    USERNAME_FIELD = 'username'
-    REQUIRED_FIELDS = ['email']
-    
-    class Meta:
-        db_table = 'users'
-    
-    def __str__(self):
-        return self.username
-
+    balance = models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
+    REQUIRED_FIELDS = ["email"]
 
 class Profile(models.Model):
     EXPERIENCE_CHOICES = [

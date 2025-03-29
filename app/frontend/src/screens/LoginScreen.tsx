@@ -3,40 +3,62 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Code2, User, Lock, ArrowRight, Mail } from 'lucide-react';
 import axios from 'axios';
 import toast, { Toaster } from 'react-hot-toast';
-
-
-const API_URL = 'http://localhost:8000/api/users';
+import { message } from "antd";
 
 function LoginScreen() {
-  const navigate = useNavigate();
   const [isLogin, setIsLogin] = useState(true);
   const [formData, setFormData] = useState({
-    username: '',
-    password: '',
-    email: '',
-    password2: ''
+    username: "",
+    email: "",
+    password: "",
+    password_confirm: "",
   });
-
-  const handleSubmit = async (e) => {
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+  
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setLoading(true);
+  
     try {
-      const endpoint = isLogin ? '/login' : '/register';
-      const response = await axios.post(`${API_URL}${endpoint}/`, formData, { withCredentials: true });
-      
-      toast.success(response.data.message);
-      
-      // Сохранение токена в localStorage для дальнейших запросов
-      localStorage.setItem('token', response.data.token);
-      
-      // Перенаправление на главную страницу
-      navigate('/');
-    } catch (error) {
-      const message = 'Произошла ошибка. Попробуйте позже.';
-      toast.error(message);
-    }
-  };
+      let response;
+      if (isLogin) {
+        response = await axios.post("http://127.0.0.1:8000/api/users/login/", {
+          username: formData.username,
+          password: formData.password,
+        });
+      } else {
+        if (formData.password !== formData.password_confirm) {
+          message.error("Пароли не совпадают");
+          setLoading(false);
+          return;
+        }
+        response = await axios.post("http://127.0.0.1:8000/api/users/register/", formData);
+      }
+  
+      console.log("Ответ сервера:", response.data);
 
-  const handleInputChange = (e) => {
+      localStorage.setItem("token", response.data.access);
+      message.success(isLogin ? "Вход выполнен успешно!" : "Регистрация прошла успешно!");
+  
+      // Ждем чуть-чуть перед навигацией
+      setTimeout(() => navigate("/dashboard"), 500);
+    } catch (error: unknown) {
+      if (axios.isAxiosError(error)) {
+        if (error.response && error.response.data) {
+          const errorData = error.response.data as Record<string, any>;
+          Object.values(errorData).forEach((err: string) => message.error(err));
+        }
+      } else {
+        message.error(isLogin ? "Ошибка входа" : "Ошибка регистрации");
+      }
+    }
+    setLoading(false);
+  };
+  
+  
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
@@ -89,29 +111,17 @@ function LoginScreen() {
                   {!isLogin && (
                     <>
                       <div className="relative group">
-                        <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-blue-400 transition-colors" />
-                        <input
-                          type="email"
-                          name="email"
-                          value={formData.email}
-                          onChange={handleInputChange}
-                          placeholder="Email"
-                          className="w-full bg-slate-900/50 border border-slate-700 rounded-lg py-3 pl-12 pr-4 text-white placeholder-gray-400 focus:outline-none focus:border-blue-400 transition-colors"
-                          required
-                        />
-                      </div>
-                      <div className="relative group">
-                        <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-blue-400 transition-colors" />
-                        <input
-                          type="password"
-                          name="password2"
-                          value={formData.password2}
-                          onChange={handleInputChange}
-                          placeholder="Подтвердите пароль"
-                          className="w-full bg-slate-900/50 border border-slate-700 rounded-lg py-3 pl-12 pr-4 text-white placeholder-gray-400 focus:outline-none focus:border-blue-400 transition-colors"
-                          required
-                        />
-                      </div>
+                          <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-blue-400 transition-colors" />
+                          <input
+                            type="email"
+                            name="email"
+                            value={formData.email}
+                            onChange={handleInputChange}
+                            placeholder="Email"
+                            className="w-full bg-slate-900/50 border border-slate-700 rounded-lg py-3 pl-12 pr-4 text-white placeholder-gray-400 focus:outline-none focus:border-blue-400 transition-colors"
+                            required
+                          />
+                        </div>
                     </>
                   )}
 
@@ -127,6 +137,23 @@ function LoginScreen() {
                       required
                     />
                   </div>
+
+                  {!isLogin && (
+                    <>
+                      <div className="relative group">  
+                        <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-blue-400 transition-colors" />
+                        <input
+                          type="password"
+                          name="password_confirm"
+                          value={formData.password_confirm}
+                          onChange={handleInputChange}
+                          placeholder="Повторите пароль"
+                          className="w-full bg-slate-900/50 border border-slate-700 rounded-lg py-3 pl-12 pr-4 text-white placeholder-gray-400 focus:outline-none focus:border-blue-400 transition-colors"
+                          required
+                        />
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 <button

@@ -4,6 +4,7 @@ import ProfileScreen from './components/ProfileScreen';
 import MainScreen from './screens/MainScreen';
 import PostTask from './screens/PostTask';
 import LoginScreen from './screens/LoginScreen';
+import Dashboard from './screens/Dashboard';
 
 function App() {
   return (
@@ -14,6 +15,7 @@ function App() {
           <Route path="/login" element={<LoginScreen />} />
           <Route path="/profile" element={<ProfileScreen />} />
           <Route path="/post-task" element={<PostTask />}/>
+          <Route path="/dashboard" element={<Dashboard/>}/>
         </Routes>
       </div>
     </Router>
