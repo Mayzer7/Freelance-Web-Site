@@ -1,250 +1,122 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Camera, LogOut, Save, User } from 'lucide-react';
+import { Code2, LogOut, User as UserIcon, Mail, Wallet } from 'lucide-react';
+import axios from 'axios';
+import toast, { Toaster } from 'react-hot-toast';
 
-interface UserProfile {
-  avatar?: string;
-  fullName: string;
-  specialization: string;
-  hourlyRate: string;
-  description: string;
-  skills: string[];
+interface UserData {
+  username: string;
+  email: string;
+  balance: string | number;
 }
 
-export default function UserProfile() {
+function ProfileScreen() {
+  const [userData, setUserData] = useState<UserData | null>(null);
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
-  const [profile, setProfile] = useState<UserProfile>({
-    fullName: '',
-    specialization: '',
-    hourlyRate: '',
-    description: '',
-    skills: []
-  });
-  const [newSkill, setNewSkill] = useState('');
-  const [avatarFile, setAvatarFile] = useState<File | null>(null);
-  const [avatarPreview, setAvatarPreview] = useState<string>('');
 
   useEffect(() => {
-    fetchUserProfile();
-  }, []);
+    const token = localStorage.getItem('token');
+    if (!token) {
+      navigate('/');
+      return;
+    }
 
-  const fetchUserProfile = async () => {
-    try {
-      const response = await fetch('/api/users/profile/', {
-        credentials: 'include'
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setProfile(data);
-        if (data.avatar) {
-          setAvatarPreview(data.avatar);
-        }
+    const fetchUserData = async () => {
+      try {
+        const response = await axios.get('http://localhost:8000/api/auth/profile/', {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        setUserData(response.data);
+      } catch (error) {
+        toast.error('Ошибка при загрузке профиля');
+        localStorage.removeItem('token');
+        navigate('/');
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error('Failed to fetch profile:', error);
-    }
+    };
+
+    fetchUserData();
+  }, [navigate]);
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    navigate('/');
   };
 
-  const handleLogout = async () => {
-    try {
-      const response = await fetch('/api/users/logout/', {
-        method: 'POST',
-        credentials: 'include',
-      });
-      
-      if (response.ok) {
-        navigate('/login');
-      }
-    } catch (error) {
-      console.error('Logout failed:', error);
-    }
-  };
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-white flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-400 border-t-transparent"></div>
+      </div>
+    );
+  }
 
-  const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      setAvatarFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setAvatarPreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleAddSkill = () => {
-    if (newSkill.trim() && !profile.skills.includes(newSkill.trim())) {
-      setProfile(prev => ({
-        ...prev,
-        skills: [...prev.skills, newSkill.trim()]
-      }));
-      setNewSkill('');
-    }
-  };
-
-  const handleRemoveSkill = (skillToRemove: string) => {
-    setProfile(prev => ({
-      ...prev,
-      skills: prev.skills.filter(skill => skill !== skillToRemove)
-    }));
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    const formData = new FormData();
-    Object.entries(profile).forEach(([key, value]) => {
-      if (key === 'skills') {
-        formData.append(key, JSON.stringify(value));
-      } else {
-        formData.append(key, value);
-      }
-    });
-    
-    if (avatarFile) {
-      formData.append('avatar', avatarFile);
-    }
-
-    try {
-      const response = await fetch('/api/profile/', {
-        method: 'POST',
-        credentials: 'include',
-        body: formData
-      });
-
-      if (response.ok) {
-        // Обновляем профиль после успешного сохранения
-        fetchUserProfile();
-      }
-    } catch (error) {
-      console.error('Failed to update profile:', error);
-    }
+  const formatBalance = (balance: string | number | undefined) => {
+    if (balance === undefined) return '0.00';
+    const numBalance = typeof balance === 'string' ? parseFloat(balance) : balance;
+    return numBalance.toFixed(2);
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-white py-12 px-4">
-      <div className="max-w-4xl mx-auto">
-        <div className="bg-slate-800/50 rounded-2xl p-8">
-          <div className="flex justify-between items-center mb-8">
-            <h1 className="text-3xl font-bold">Профиль фрилансера</h1>
-            <button
-              onClick={handleLogout}
-              className="flex items-center space-x-2 bg-red-500 hover:bg-red-600 px-4 py-2 rounded-lg transition-colors"
-            >
-              <LogOut className="w-5 h-5" />
-              <span>Выйти</span>
-            </button>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Avatar Section */}
-            <div className="flex items-center space-x-6">
-              <div className="relative">
-                <div className="w-32 h-32 rounded-full overflow-hidden bg-slate-700">
-                  {avatarPreview ? (
-                    <img
-                      src={avatarPreview}
-                      alt="Profile"
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <User className="w-full h-full p-6 text-slate-400" />
-                  )}
-                </div>
-                <label className="absolute bottom-0 right-0 bg-blue-500 p-2 rounded-full cursor-pointer hover:bg-blue-600 transition-colors">
-                  <Camera className="w-5 h-5" />
-                  <input
-                    type="file"
-                    className="hidden"
-                    accept="image/*"
-                    onChange={handleAvatarChange}
-                  />
-                </label>
-              </div>
-              <div className="flex-1">
-                <input
-                  type="text"
-                  placeholder="Ваше полное имя"
-                  value={profile.fullName}
-                  onChange={e => setProfile({...profile, fullName: e.target.value})}
-                  className="w-full bg-slate-700 rounded-lg px-4 py-2 mb-3"
-                />
-                <input
-                  type="text"
-                  placeholder="Специализация"
-                  value={profile.specialization}
-                  onChange={e => setProfile({...profile, specialization: e.target.value})}
-                  className="w-full bg-slate-700 rounded-lg px-4 py-2"
-                />
-              </div>
-            </div>
-
-            {/* Rate and Description */}
-            <div className="space-y-4">
-              <input
-                type="text"
-                placeholder="Почасовая ставка (₽)"
-                value={profile.hourlyRate}
-                onChange={e => setProfile({...profile, hourlyRate: e.target.value})}
-                className="w-full bg-slate-700 rounded-lg px-4 py-2"
-              />
-              <textarea
-                placeholder="Расскажите о себе и своем опыте..."
-                value={profile.description}
-                onChange={e => setProfile({...profile, description: e.target.value})}
-                className="w-full bg-slate-700 rounded-lg px-4 py-2 h-32 resize-none"
-              />
-            </div>
-
-            {/* Skills Section */}
-            <div className="space-y-4">
-              <div className="flex space-x-2">
-                <input
-                  type="text"
-                  placeholder="Добавить навык"
-                  value={newSkill}
-                  onChange={e => setNewSkill(e.target.value)}
-                  className="flex-1 bg-slate-700 rounded-lg px-4 py-2"
-                  onKeyPress={e => e.key === 'Enter' && handleAddSkill()}
-                />
-                <button
-                  type="button"
-                  onClick={handleAddSkill}
-                  className="bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-lg transition-colors"
-                >
-                  Добавить
-                </button>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {profile.skills.map(skill => (
-                  <span
-                    key={skill}
-                    className="bg-blue-500/30 text-blue-300 px-3 py-1 rounded-full flex items-center"
-                  >
-                    {skill}
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveSkill(skill)}
-                      className="ml-2 text-blue-300 hover:text-blue-100"
-                    >
-                      ×
-                    </button>
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            {/* Submit Button */}
-            <button
-              type="submit"
-              className="w-full bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 px-6 py-3 rounded-lg transition-colors flex items-center justify-center space-x-2"
-            >
-              <Save className="w-5 h-5" />
-              <span>Сохранить изменения</span>
-            </button>
-          </form>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-white">
+      <Toaster position="top-right" />
+      
+      <nav className="container mx-auto px-6 py-4 flex justify-between items-center">
+        <div className="flex items-center space-x-2">
+          <Code2 className="w-8 h-8 text-blue-400" />
+          <span className="text-xl font-bold">FreelanceHub</span>
         </div>
-      </div>
+        <button
+          onClick={handleLogout}
+          className="flex items-center space-x-2 px-4 py-2 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors"
+        >
+          <LogOut className="w-5 h-5" />
+          <span>Выйти</span>
+        </button>
+      </nav>
+
+      <main className="container mx-auto px-6 py-12">
+        <div className="max-w-2xl mx-auto">
+          <div className="relative">
+            <div className="absolute inset-0 bg-gradient-to-r from-blue-500/30 to-purple-500/30 blur-3xl transform -rotate-6"></div>
+            <div className="relative bg-slate-800/90 p-8 rounded-2xl backdrop-blur-sm border border-slate-700 shadow-xl">
+              <h1 className="text-3xl font-bold mb-8 text-center">Профиль пользователя</h1>
+              
+              <div className="space-y-6">
+                <div className="flex items-center space-x-4 p-4 bg-slate-900/50 rounded-lg">
+                  <UserIcon className="w-6 h-6 text-blue-400" />
+                  <div>
+                    <p className="text-sm text-gray-400">Имя пользователя</p>
+                    <p className="font-semibold">{userData?.username}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-4 p-4 bg-slate-900/50 rounded-lg">
+                  <Mail className="w-6 h-6 text-blue-400" />
+                  <div>
+                    <p className="text-sm text-gray-400">Email</p>
+                    <p className="font-semibold">{userData?.email}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-4 p-4 bg-slate-900/50 rounded-lg">
+                  <Wallet className="w-6 h-6 text-blue-400" />
+                  <div>
+                    <p className="text-sm text-gray-400">Баланс</p>
+                    <p className="font-semibold">{formatBalance(userData?.balance)} ₽</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
     </div>
   );
 }
+
+export default ProfileScreen;
