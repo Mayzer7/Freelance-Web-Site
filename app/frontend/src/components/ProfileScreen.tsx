@@ -1,17 +1,28 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Code2, LogOut, User as UserIcon, Mail, Wallet } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
+import { Code2, LogOut, User as UserIcon, Mail, Wallet, Edit, Star, Briefcase, Globe, Link as IconLink } from 'lucide-react';
 import axios from 'axios';
 import toast, { Toaster } from 'react-hot-toast';
 
-interface UserData {
+interface UserProfile {
   username: string;
   email: string;
   balance: string | number;
+  bio: string;
+  experience_level: string;
+  hourly_rate: string | number;
+  portfolio_url: string;
+  github_url: string;
+  linkedin_url: string;
+  rating: string | number;
+  completed_projects: number;
+  specialization: string;
+  languages: string[];
+  available_for_hire: boolean;
 }
 
 function ProfileScreen() {
-  const [userData, setUserData] = useState<UserData | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
@@ -22,14 +33,12 @@ function ProfileScreen() {
       return;
     }
 
-    const fetchUserData = async () => {
+    const fetchUserProfile = async () => {
       try {
         const response = await axios.get('http://localhost:8000/api/auth/profile/', {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { Authorization: `Bearer ${token}` },
         });
-        setUserData(response.data);
+        setUserProfile(response.data);
       } catch (error) {
         toast.error('Ошибка при загрузке профиля');
         localStorage.removeItem('token');
@@ -39,7 +48,7 @@ function ProfileScreen() {
       }
     };
 
-    fetchUserData();
+    fetchUserProfile();
   }, [navigate]);
 
   const handleLogout = () => {
@@ -55,66 +64,66 @@ function ProfileScreen() {
     );
   }
 
-  const formatBalance = (balance: string | number | undefined) => {
-    if (balance === undefined) return '0.00';
-    const numBalance = typeof balance === 'string' ? parseFloat(balance) : balance;
-    return numBalance.toFixed(2);
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-white">
       <Toaster position="top-right" />
-      
       <nav className="container mx-auto px-6 py-4 flex justify-between items-center">
         <div className="flex items-center space-x-2">
           <Code2 className="w-8 h-8 text-blue-400" />
-          <span className="text-xl font-bold">FreelanceHub</span>
+          <Link to="/">
+            <span className="text-xl font-bold">
+              FreelanceHub
+            </span>
+          </Link>
         </div>
         <button
           onClick={handleLogout}
-          className="flex items-center space-x-2 px-4 py-2 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors"
-        >
+          className="flex items-center space-x-2 px-4 py-2 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors">
           <LogOut className="w-5 h-5" />
           <span>Выйти</span>
         </button>
       </nav>
-
       <main className="container mx-auto px-6 py-12">
-        <div className="max-w-2xl mx-auto">
-          <div className="relative">
-            <div className="absolute inset-0 bg-gradient-to-r from-blue-500/30 to-purple-500/30 blur-3xl transform -rotate-6"></div>
-            <div className="relative bg-slate-800/90 p-8 rounded-2xl backdrop-blur-sm border border-slate-700 shadow-xl">
-              <h1 className="text-3xl font-bold mb-8 text-center">Профиль пользователя</h1>
-              
-              <div className="space-y-6">
-                <div className="flex items-center space-x-4 p-4 bg-slate-900/50 rounded-lg">
-                  <UserIcon className="w-6 h-6 text-blue-400" />
-                  <div>
-                    <p className="text-sm text-gray-400">Имя пользователя</p>
-                    <p className="font-semibold">{userData?.username}</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center space-x-4 p-4 bg-slate-900/50 rounded-lg">
-                  <Mail className="w-6 h-6 text-blue-400" />
-                  <div>
-                    <p className="text-sm text-gray-400">Email</p>
-                    <p className="font-semibold">{userData?.email}</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center space-x-4 p-4 bg-slate-900/50 rounded-lg">
-                  <Wallet className="w-6 h-6 text-blue-400" />
-                  <div>
-                    <p className="text-sm text-gray-400">Баланс</p>
-                    <p className="font-semibold">{formatBalance(userData?.balance)} ₽</p>
-                  </div>
-                </div>
-              </div>
-            </div>
+        <div className="max-w-2xl mx-auto bg-slate-800/90 p-8 rounded-2xl border border-slate-700 shadow-xl">
+          <h1 className="text-3xl font-bold mb-8 text-center">Профиль пользователя</h1>
+          <div className="space-y-4">
+            <ProfileField icon={<UserIcon />} label="Имя пользователя" value={userProfile?.username} />
+            <ProfileField icon={<Mail />} label="Email" value={userProfile?.email} />
+            <ProfileField icon={<Wallet />} label="Баланс" value={`${userProfile?.balance} ₽`} />
+            <ProfileField icon={<Briefcase />} label="Опыт" value={userProfile?.experience_level} />
+            <ProfileField icon={<Star />} label="Рейтинг" value={userProfile?.rating} />
+            <ProfileField icon={<Globe />} label="Специализация" value={userProfile?.specialization} />
+            <ProfileField icon={<Edit />} label="Навыки" value={userProfile?.languages?.join(', ')} />
+            <ProfileField icon={<IconLink />} label="Портфолио" value={userProfile?.portfolio_url} link />
+            <ProfileField icon={<IconLink />} label="GitHub" value={userProfile?.github_url} link />
+            <ProfileField icon={<IconLink />} label="LinkedIn" value={userProfile?.linkedin_url} link />
+          </div>
+          <div className="mt-6 flex justify-center">
+            <button onClick={() => navigate('/edit-profile')} className="px-6 py-3 rounded-lg bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-colors flex items-center">
+              <Edit className="w-5 h-5" />
+              <span>Редактировать профиль</span>
+            </button>
           </div>
         </div>
       </main>
+    </div>
+  );
+}
+
+function ProfileField({ icon, label, value, link }: { icon: JSX.Element; label: string; value?: string | number; link?: boolean }) {
+  return (
+    <div className="flex items-center space-x-4 p-4 bg-slate-900/50 rounded-lg">
+      {icon}
+      <div>
+        <p className="text-sm text-gray-400">{label}</p>
+        {link && value ? (
+          <a href={String(value)} target="_blank" rel="noopener noreferrer" className="font-semibold text-blue-400 hover:underline">
+            {value}
+          </a>
+        ) : (
+          <p className="font-semibold">{value || 'Не указано'}</p>
+        )}
+      </div>
     </div>
   );
 }

@@ -50,12 +50,14 @@ function MainScreen() {
     //   );
     // }
 
+    const token = localStorage.getItem("token")
+
     return (
       <button
         className="bg-blue-500 hover:bg-blue-600 px-6 py-2 rounded-full transition-colors"
-        onClick={() => navigate("/login")}
+        onClick={() => navigate(token ? "/profile" : "/login")}
       >
-        Войти
+        {token ? "Перейти в профиль" : "Войти"}
       </button>
     );
   };
