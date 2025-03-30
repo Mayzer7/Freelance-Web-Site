@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Code2, Plus, Search, User } from 'lucide-react';
 import { Link } from "react-router-dom";
+import { TaskModal, TaskFormData } from '../components/TaskModal';
+import { createTask, getTasks } from '../api/tasks';
 
 interface FreelancerCard {
   id: string;
@@ -8,6 +10,15 @@ interface FreelancerCard {
   avatar: string;
   skills: string[];
   rating: number;
+}
+
+interface Task {
+  id: number;
+  title: string;
+  description: string;
+  budget: number;
+  skills: string[];
+  created_at: string;
 }
 
 const freelancers: FreelancerCard[] = [
@@ -35,19 +46,53 @@ const freelancers: FreelancerCard[] = [
 ];
 
 function PostTask() {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [tasks, setTasks] = useState<Task[]>([]);
+
+  useEffect(() => {
+    loadTasks();
+  }, []);
+
+  const loadTasks = async () => {
+    try {
+      const tasksData = await getTasks();
+      setTasks(tasksData);
+    } catch (error) {
+      console.error('Failed to load tasks:', error);
+    }
+  };
+
+  const handleCreateTask = async (taskData: TaskFormData) => {
+    try {
+      await createTask(taskData);
+      await loadTasks(); // Reload tasks after creating new one
+    } catch (error) {
+      console.error('Failed to create task:', error);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-white">
+      <TaskModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSubmit={handleCreateTask}
+      />
+
       {/* Navigation */}
       <nav className="container mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <Code2 className="w-8 h-8 text-blue-400" />
             <Link to="/">
-                <span className="text-xl font-bold">FreelanceHub</span>
+              <span className="text-xl font-bold">FreelanceHub</span>
             </Link>
           </div>
           <div className="flex items-center space-x-8">
-            <button className="bg-blue-500 hover:bg-blue-600 px-6 py-2 rounded-full transition-colors flex items-center">
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="bg-blue-500 hover:bg-blue-600 px-6 py-2 rounded-full transition-colors flex items-center"
+            >
               <Plus className="w-5 h-5 mr-2" />
               Новое задание
             </button>
@@ -101,22 +146,24 @@ function PostTask() {
         </div>
       </section>
 
-      {/* Task Section */}
+      {/* Tasks Section */}
       <section className="container mx-auto px-6 py-8">
-        <div className="bg-slate-800/50 p-6 rounded-xl mb-8">
-          <h2 className="text-2xl font-bold mb-6">Разработка мобильного приложения</h2>
-          <p className="text-gray-300 mb-6">
-            Требуется разработать мобильное приложение для iOS и Android с использованием React Native.
-            Приложение должно включать авторизацию, профиль пользователя и интеграцию с API.
-          </p>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <span className="bg-blue-500/20 text-blue-400 px-4 py-1 rounded-full">React Native</span>
-              <span className="bg-purple-500/20 text-purple-400 px-4 py-1 rounded-full">Mobile</span>
+        {tasks.map((task) => (
+          <div key={task.id} className="bg-slate-800/50 p-6 rounded-xl mb-8">
+            <h2 className="text-2xl font-bold mb-6">{task.title}</h2>
+            <p className="text-gray-300 mb-6">{task.description}</p>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                {task.skills.map((skill, index) => (
+                  <span key={index} className="bg-blue-500/20 text-blue-400 px-4 py-1 rounded-full">
+                    {skill}
+                  </span>
+                ))}
+              </div>
+              <span className="text-gray-400">Бюджет: {task.budget} ₽</span>
             </div>
-            <span className="text-gray-400">Бюджет: 150 000 ₽</span>
           </div>
-        </div>
+        ))}
 
         <h3 className="text-xl font-semibold mb-6">Рекомендуемые исполнители</h3>
         <div className="grid md:grid-cols-3 gap-6">
