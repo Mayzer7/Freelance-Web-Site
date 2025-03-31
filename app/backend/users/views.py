@@ -1,4 +1,5 @@
 from rest_framework import status
+from rest_framework.views import APIView
 from rest_framework.decorators import api_view, permission_classes, parser_classes
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -36,7 +37,7 @@ def login_user(request):
             refresh = RefreshToken.for_user(user)
             return Response({
                 'token': str(refresh.access_token),
-                'user': UserSerializer(user).data
+                'user': UserSerializer(user, context={'request': request}).data  # добавили context
             })
         return Response({
             "message": "Неверные учетные данные"
@@ -48,11 +49,11 @@ def login_user(request):
 @parser_classes([MultiPartParser, FormParser])
 def profile_view(request):
     if request.method == 'GET':
-        serializer = UserSerializer(request.user)
+        serializer = UserSerializer(request.user, context={'request': request})  # Добавляем request
         return Response(serializer.data)
     
     elif request.method == 'PUT':
-        user_serializer = UserSerializer(request.user, data=request.data, partial=True)
+        user_serializer = UserSerializer(request.user, data=request.data, partial=True, context={'request': request})
         profile_serializer = ProfileSerializer(request.user.profile, data=request.data, partial=True)
         
         if user_serializer.is_valid() and profile_serializer.is_valid():
@@ -73,3 +74,17 @@ def get_skills(request):
     skills = Skill.objects.all()
     serializer = SkillSerializer(skills, many=True)
     return Response(serializer.data)
+
+
+class UploadAvatarView(APIView):
+    permission_classes = [IsAuthenticated]
+    parser_classes = (MultiPartParser, FormParser)
+
+    def post(self, request, *args, **kwargs):
+        user = request.user
+        if 'avatar' in request.FILES:
+            avatar = request.FILES['avatar']
+            user.avatar.save(f'avatars/{user.id}.jpg', avatar)
+            user.save()
+            return Response({'avatar': user.avatar.url}, status=200)
+        return Response({'error': 'Файл не загружен'}, status=400)

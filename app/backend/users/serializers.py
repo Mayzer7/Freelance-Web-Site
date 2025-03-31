@@ -36,12 +36,19 @@ class ProfileSerializer(serializers.ModelSerializer):
 
 class UserSerializer(serializers.ModelSerializer):
     profile = ProfileSerializer(read_only=True)
-    avatar = serializers.ImageField(required=False)
+    avatar = serializers.SerializerMethodField()  # Меняем тип поля
 
     class Meta:
         model = User
         fields = ('id', 'username', 'email', 'balance', 'avatar', 'profile')
         read_only_fields = ('id', 'balance')
+
+    def get_avatar(self, obj):
+        """Формирует полный URL для аватара"""
+        request = self.context.get('request')
+        if obj.avatar:
+            return request.build_absolute_uri(obj.avatar.url)
+        return None  # Если нет аватара
 
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=True, validators=[validate_password])
