@@ -166,7 +166,9 @@ function PostTask() {
                   {task.author.username[0].toUpperCase()}
                 </div>
               )}
-              <span className="font-semibold">{task.author.username}</span>
+              <Link to={`/profile/${task.author.username}`} className="hover:text-blue-400">
+                <span className="font-semibold">{task.author.username}</span>
+              </Link>
             </div>
             <h2 className="text-2xl font-bold mb-6">{task.title}</h2>
             <p className="text-gray-300 mb-6">{task.description}</p>

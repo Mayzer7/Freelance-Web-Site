@@ -6,11 +6,12 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
+from django.shortcuts import get_object_or_404
 from .serializers import (
     UserSerializer, RegisterSerializer, LoginSerializer,
     ProfileSerializer, SkillSerializer
 )
-from .models import Skill
+from .models import User, Skill
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
@@ -67,6 +68,13 @@ def profile_view(request):
         if not profile_serializer.is_valid():
             errors.update(profile_serializer.errors)
         return Response(errors, status=status.HTTP_400_BAD_REQUEST)
+    
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def public_profile_view(request, username):
+    user = get_object_or_404(User, username=username)
+    serializer = UserSerializer(user, context={'request': request})
+    return Response(serializer.data)
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
