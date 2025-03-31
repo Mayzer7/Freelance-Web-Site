@@ -9,3 +9,6 @@ class TaskViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         return Task.objects.select_related('author').all()
+
+    def perform_create(self, serializer):
+        serializer.save(author=self.request.user)

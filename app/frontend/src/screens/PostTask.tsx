@@ -19,6 +19,10 @@ interface Task {
   budget: number;
   skills: string[];
   created_at: string;
+  author: {
+    username: string;
+    avatar: string | null;
+  };
 }
 
 const freelancers: FreelancerCard[] = [
@@ -150,6 +154,20 @@ function PostTask() {
       <section className="container mx-auto px-6 py-8">
         {tasks.map((task) => (
           <div key={task.id} className="bg-slate-800/50 p-6 rounded-xl mb-8">
+            <div className="flex items-center mb-4">
+              {task.author.avatar ? (
+                <img 
+                  src={`http://localhost:8000${task.author.avatar}`}  
+                  alt={task.author.username} 
+                  className="w-10 h-10 rounded-full mr-4" 
+                />
+              ) : (
+                <div className="w-10 h-10 bg-gray-600 rounded-full mr-4 flex items-center justify-center text-white">
+                  {task.author.username[0].toUpperCase()}
+                </div>
+              )}
+              <span className="font-semibold">{task.author.username}</span>
+            </div>
             <h2 className="text-2xl font-bold mb-6">{task.title}</h2>
             <p className="text-gray-300 mb-6">{task.description}</p>
             <div className="flex items-center justify-between">
