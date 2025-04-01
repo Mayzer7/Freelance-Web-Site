@@ -8,9 +8,11 @@ import {
   Briefcase,
   Globe,
   Link as IconLink,
+  MessageCircle,
 } from "lucide-react";
 import axios from "axios";
 import toast, { Toaster } from "react-hot-toast";
+import { Messenger } from "./Messanger";
 
 interface UserProfile {
   avatar: string | null;
@@ -32,6 +34,7 @@ function PublicProfileScreen() {
   const { username } = useParams();
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isMessengerOpen, setIsMessengerOpen] = useState(false);
 
   useEffect(() => {
     const fetchUserProfile = async () => {
@@ -85,7 +88,16 @@ function PublicProfileScreen() {
               alt="Аватар пользователя"
               className="w-32 h-32 rounded-full border-4 border-blue-400 shadow-lg object-cover"
             />
+
+            <button
+                onClick={() => setIsMessengerOpen(true)}
+                className="mt-4 flex items-center space-x-2 bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-lg transition-colors"
+              >
+                <MessageCircle size={20} />
+                <span>Написать сообщение</span>
+            </button>
           </div>
+          
 
           <div className="space-y-4">
             <ProfileField
@@ -129,6 +141,13 @@ function PublicProfileScreen() {
           </div>
         </div>
       </main>
+
+      {/* Messenger Component */}
+      <Messenger 
+        isOpen={isMessengerOpen} 
+        onClose={() => setIsMessengerOpen(false)}
+        initialChat={username || null}
+      />
     </div>
   );
 }
